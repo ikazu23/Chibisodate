@@ -1,5 +1,5 @@
 // ちびそだて：オフライン用。新しい版があればそちらを優先し、つながらないときだけ保存した版を使う
-const CACHE = "chibisodate-0.2.0";
+const CACHE = "chibisodate-0.2.1";
 const FILES = ["./", "index.html", "style.css", "boot.js", "data.js", "game.js", "data.ko.js", "game.ko.js", "manifest.webmanifest",
   "sprites/egg.png", "sprites/baby.png", "sprites/kdj.png", "sprites/yjh.png", "sprites/hsy.png",
   "icon-192.png", "icon-512.png", "apple-touch-icon.png"];

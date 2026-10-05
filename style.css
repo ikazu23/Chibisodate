@@ -703,3 +703,10 @@ button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
 @keyframes toastIn { from { opacity: 0; transform: translateY(-14px) scale(.85); } }
 @keyframes toastOut { to { opacity: 0; transform: translateY(-10px); } }
 .toast { width: max-content; }
+
+/* ボタンとラベルのすき間（影の下に余白をとる） */
+.act { gap: 10px; }
+#deck { min-height: 100px; }
+/* 韓国語：太字のないフォントを無理に太らせない */
+html[lang="ko"] * { font-synthesis: none; }
+html[lang="ko"] .act { font-size: 13px; letter-spacing: .02em; }
