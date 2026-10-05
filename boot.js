@@ -1,5 +1,6 @@
 // ===== ちびそだて：起動（言語を選んで、その言語のファイルを読み込む） =====
 (() => {
+  const V = "0.2.2"; // 更新したら index.html の ?v= と一緒に上げる
   let lang = null;
   try { lang = localStorage.getItem("chibisodate-lang"); } catch (e) { /* なにもしない */ }
   if (lang !== "ja" && lang !== "ko") lang = /^ko/i.test(navigator.language || "") ? "ko" : "ja";
@@ -58,7 +59,7 @@
   const load = (i) => {
     if (i >= files.length) return;
     const s = document.createElement("script");
-    s.src = files[i];
+    s.src = files[i] + "?v=" + V;
     s.onload = () => load(i + 1);
     document.body.appendChild(s);
   };
