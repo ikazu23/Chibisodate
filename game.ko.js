@@ -1,6 +1,17 @@
+// 自動生成（tools/make_ko.py）。直接編集しないでね
 // ===== ちびそだて：ゲーム本体 =====
 (() => {
 "use strict";
+// 韓国語の助詞（받침の有無で 이/가・은/는・을/를・과/와・으로/로 を選ぶ）
+function P(w, pair) {
+  const [a, b] = pair.split("/");
+  const ch = String(w || "").trim().slice(-1).charCodeAt(0);
+  if (!(ch >= 0xac00 && ch <= 0xd7a3)) return b;
+  const jong = (ch - 0xac00) % 28;
+  if (pair === "으로/로" && jong === 8) return b;
+  return jong ? a : b;
+}
+const J = (w, pair) => w + P(w, pair);
 
 const $ = (s) => document.querySelector(s);
 const STAT_KEYS = ["hunger", "happy", "clean", "energy"];
@@ -13,7 +24,7 @@ const sleepMs = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---------- 状態 ----------
 function freshState() {
-  return { version: 3, current: null, zukan: {}, view: "room", fast: false, introDone: false, tips: {}, bonds: {}, pairRank: {}, together: {}, proposeAt: {}, cheer: {}, homeShow: [], affection: {}, settings: { bed: CONFIG.bedHour, wake: CONFIG.wakeHour, weather: false, city: "tokyo", geo: null, sound: true }, weather: null, awakeUntil: 0, lastTick: Date.now() };
+  return { version: 3, current: null, zukan: {}, view: "room", fast: false, introDone: false, tips: {}, bonds: {}, pairRank: {}, together: {}, proposeAt: {}, cheer: {}, homeShow: [], affection: {}, settings: { bed: CONFIG.bedHour, wake: CONFIG.wakeHour, weather: false, city: "seoul", geo: null, sound: true }, weather: null, awakeUntil: 0, lastTick: Date.now() };
 }
 function newRun() {
   return {
@@ -180,12 +191,12 @@ function eggStep(dt) {
       r.hatchP = clamp(r.hatchP - 12); r.eggQ = clamp(r.eggQ - 10);
       el.actor.classList.remove("shaking");
       anim("squish", 350);
-      toast("たまごがころがっちゃった…（孵化が少し戻った）");
+      toast("알이 굴러가 버렸다… (부화가 조금 줄었다)");
     }
   } else if (r.hatchP > 5 && Math.random() < dt / CONFIG.wobbleEverySec) {
     r.wobbleUntil = now + CONFIG.wobbleSec * 1000;
     el.actor.classList.add("shaking");
-    say("ぐらぐら……！ なでて！", CONFIG.wobbleSec * 1000);
+    say("흔들흔들……! 쓰다듬어 줘!", CONFIG.wobbleSec * 1000);
     sfx("wobble");
   }
   if (r.hatchP >= 100) hatch();
@@ -196,12 +207,12 @@ function eggCatchUp(sec) {
 }
 function eggState(r) {
   const [lo, hi] = CONFIG.eggZone;
-  if (r.incubate) return ["ok", `あたため器 のこり${Math.max(1, Math.ceil(((100 - r.hatchP) / 100) * CONFIG.incubateMin))}分`];
-  if (r.temp > CONFIG.eggHot) return ["hot", "あつすぎ！あおいで"];
-  if (r.temp > hi) return ["warm", "ちょっとあつい"];
-  if (r.temp >= lo) return ["ok", "ちょうどいい"];
-  if (r.temp >= CONFIG.eggCold) return ["cool", "ちょっとさむい"];
-  return ["cold", "さむい…あたためて"];
+  if (r.incubate) return ["ok", `부화기 남은 시간 ${Math.max(1, Math.ceil(((100 - r.hatchP) / 100) * CONFIG.incubateMin))}분`];
+  if (r.temp > CONFIG.eggHot) return ["hot", "너무 뜨거워! 부채질해"];
+  if (r.temp > hi) return ["warm", "조금 뜨거워"];
+  if (r.temp >= lo) return ["ok", "딱 좋아"];
+  if (r.temp >= CONFIG.eggCold) return ["cool", "조금 추워"];
+  return ["cold", "추워… 따뜻하게 해 줘"];
 }
 
 function spoil(r) {
@@ -244,20 +255,20 @@ const el = {
   settings: $("#settings"),
 };
 const METER_TIP = {
-  hunger: "おなか：「ごはん」で回復",
-  clean: "せいけつ：「おふろ」で回復",
-  happy: "きげん：「あそぶ」となでる（キャラをタップ）で回復",
-  energy: "げんき：「ねる」で回復。2分くらいで満タン",
-  growth: "成長：メーターの平均が40%以上だと育つ",
-  shitsuke: "しつけ：わがまま・いたずらを「しかる」と上がる",
-  style: "せいかく：ピンク＝なでる・あそぶ（勝ち）／紫＝わがままをしかる／黄＝わがままを聞いてあげる。いちばん多い色で育つ子が変わる",
+  hunger: "포만감: 「밥」으로 회복",
+  clean: "청결: 「목욕」으로 회복",
+  happy: "기분: 「놀기」와 쓰다듬기(캐릭터를 탭)로 회복",
+  energy: "기운: 「재우기」로 회복. 2분 정도면 가득",
+  growth: "성장: 게이지 평균이 40% 이상이면 자라",
+  shitsuke: "훈육: 투정·장난을 「혼내기」하면 올라",
+  style: "성격: 분홍=쓰다듬기·놀기(승리) / 보라=투정을 혼내기 / 노랑=투정을 들어주기. 가장 많은 색에 따라 자라는 아이가 달라져",
 };
 const meters = {};
 document.querySelectorAll(".meter").forEach((m) => {
   meters[m.dataset.k] = m;
   m.addEventListener("click", () => toast(METER_TIP[m.dataset.k]));
 });
-const STAGE_LABEL = { egg: "たまご", baby: "あかちゃん", child: "ちび", adult: "おとな" };
+const STAGE_LABEL = { egg: "알", baby: "아기", child: "꼬마", adult: "어른" };
 
 function render() {
   const r = state.current;
@@ -267,16 +278,16 @@ function render() {
   el.hud.classList.toggle("idle", !r || home);
 
   if (home) {
-    el.stage.textContent = "おうち";
-    el.name.textContent = `${graduates().length}人がくらしてる`;
+    el.stage.textContent = "집";
+    el.name.textContent = `${graduates().length}명이 살고 있어`;
     el.hud.classList.add("idle");
   } else if (r) {
     const ph = shownPhase(r);
     el.stage.textContent = STAGE_LABEL[ph];
-    el.name.textContent = ph === "egg" ? "ふしぎなたまご" : ph === "baby" ? "あかちゃん" : who(r).short;
+    el.name.textContent = ph === "egg" ? "신기한 알" : ph === "baby" ? "아기" : who(r).short;
   } else {
-    el.stage.textContent = "おへや";
-    el.name.textContent = "だれもいない";
+    el.stage.textContent = "방";
+    el.name.textContent = "아무도 없어";
   }
 
   if (r && r.phase !== "egg") {
@@ -311,7 +322,7 @@ function render() {
   if (r && r.phase !== "egg" && !home) {
     for (let i = 0; i < CONFIG.farewellMisses; i++) {
       const s = document.createElement("span");
-      s.textContent = i < r.misses ? "✖" : "・";
+      s.textContent = i < r.misses ? "✖" : "·";
       el.miss.appendChild(s);
     }
   }
@@ -323,11 +334,11 @@ function render() {
   renderActions();
 }
 
-const WANT_TEXT = { hunger: ["ごはんがほしい", "おなか"], clean: ["おふろに入りたい", "せいけつ"], happy: ["あそんでほしい", "きげん"], energy: ["ねむりたい", "げんき"] };
+const WANT_TEXT = { hunger: ["밥이 먹고 싶다", "포만감"], clean: ["목욕하고 싶다", "청결"], happy: ["놀아 줬으면 한다", "기분"], energy: ["자고 싶다", "기운"] };
 function renderCallHint() {
   const r = state.current;
   if (r && r.night && r.sleeping && !r.ended) {
-    el.callhint.innerHTML = `<i>☾</i><span class="t">夜はおやすみ中。${state.settings.wake}:00に起きるよ（夜はメーターがほとんど減らない）</span>`;
+    el.callhint.innerHTML = `<i>☾</i><span class="t">밤에는 자는 중. ${state.settings.wake}:00에 일어나 (밤에는 게이지가 거의 줄지 않아)</span>`;
     el.callhint.classList.add("info");
     el.callhint.hidden = false;
     for (const k of STAT_KEYS) meters[k].classList.remove("asked");
@@ -339,13 +350,13 @@ function renderCallHint() {
   el.room.classList.toggle("mess", !!c && c.type === "mischief");
   if (!c) { el.callhint.hidden = true; return; }
   let html;
-  if (c.type === "mischief") html = "<b>いたずらしてる！</b> しかって止めよう";
-  else if (c.type === "refuse") html = "<b>いやがってる……</b> しかってからもう一回";
+  if (c.type === "mischief") html = "<b>장난치고 있어!</b> 혼내서 말리자";
+  else if (c.type === "refuse") html = "<b>싫어하고 있어……</b> 혼낸 다음 다시 한 번";
   else {
     const [w, label] = WANT_TEXT[c.want];
     const v = Math.round(r.stats[c.want]);
     const low = v < CONFIG.needBelow + 15;
-    html = `<b>${w}</b>って言ってる…？ <span class="chk ${low ? "low" : "ok"}">${label}<i><em style="width:${v}%"></em></i>${v}%</span>`;
+    html = `<b>${w}</b>고 말하고 있어…? <span class="chk ${low ? "low" : "ok"}">${label}<i><em style="width:${v}%"></em></i>${v}%</span>`;
   }
   el.callhint.innerHTML = '<i>!</i><span class="t">' + html + "</span>";
   el.callhint.hidden = false;
@@ -415,35 +426,35 @@ const ICON = {
 function actionList() {
   const r = state.current;
   if (state.view === "home") return [
-    { id: "back", label: "もどる", icon: "back", k: "var(--c-sleep)" },
-    { id: "hTalk", label: "はなさせる", icon: "talk", k: "var(--c-play)", off: residents.length < 2, alert: homeMode && homeMode.type === "talk" },
-    { id: "hSnack", label: "おやつ", icon: "food", k: "var(--c-food)", alert: homeMode && homeMode.type === "snack" },
+    { id: "back", label: "돌아가기", icon: "back", k: "var(--c-sleep)" },
+    { id: "hTalk", label: "대화시키기", icon: "talk", k: "var(--c-play)", off: residents.length < 2, alert: homeMode && homeMode.type === "talk" },
+    { id: "hSnack", label: "간식", icon: "food", k: "var(--c-food)", alert: homeMode && homeMode.type === "snack" },
   ];
   if (!r) {
-    const list = [{ id: "start", label: "そだてる", icon: "egg", k: "var(--c-warm)" }];
-    if (graduates().length) list.push({ id: "home", label: "おうち", icon: "home", k: "var(--good)" });
+    const list = [{ id: "start", label: "키우기", icon: "egg", k: "var(--c-warm)" }];
+    if (graduates().length) list.push({ id: "home", label: "집", icon: "home", k: "var(--good)" });
     return list;
   }
   if (r.ended) return [];
   if (mg) return [
-    { id: "mgL", label: "ひだり", icon: "left", k: "var(--c-play)", off: mg.locked },
-    { id: "mgR", label: "みぎ", icon: "right", k: "var(--c-play)", off: mg.locked },
+    { id: "mgL", label: "왼쪽", icon: "left", k: "var(--c-play)", off: mg.locked },
+    { id: "mgR", label: "오른쪽", icon: "right", k: "var(--c-play)", off: mg.locked },
   ];
   if (r.phase === "egg") return [
-    { id: "warm", label: "あたためる", icon: "warm", k: "var(--c-warm)", alert: r.temp < CONFIG.eggCold },
-    { id: "pet", label: "なでる", icon: "pet", k: "var(--c-pet)", alert: !!r.wobbleUntil },
-    { id: "fan", label: "あおぐ", icon: "fan", k: "var(--c-bath)", alert: r.temp > CONFIG.eggHot, off: r.incubate },
-    { id: "incubate", label: "おまかせ", icon: "incubate", k: "var(--good)", off: r.incubate },
+    { id: "warm", label: "품기", icon: "warm", k: "var(--c-warm)", alert: r.temp < CONFIG.eggCold },
+    { id: "pet", label: "쓰다듬기", icon: "pet", k: "var(--c-pet)", alert: !!r.wobbleUntil },
+    { id: "fan", label: "부채질", icon: "fan", k: "var(--c-bath)", alert: r.temp > CONFIG.eggHot, off: r.incubate },
+    { id: "incubate", label: "맡기기", icon: "incubate", k: "var(--good)", off: r.incubate },
   ].map((a) => (r.incubate && a.id === "warm" ? { ...a, off: true } : a));
   const s = r.stats, z = r.sleeping, need = r.call && r.call.type === "need" ? r.call.want : null;
   return [
-    r.phase === "baby" ? { id: "food", label: "ミルク", icon: "milk", k: "var(--c-food)", off: z, alert: need === "hunger" } :
-    { id: "food", label: "ごはん", icon: "food", k: "var(--c-food)", off: z, alert: need === "hunger" },
-    { id: "bath", label: "おふろ", icon: "bath", k: "var(--c-bath)", off: z, alert: need === "clean" },
-    { id: "play", label: "あそぶ", icon: "play", k: "var(--c-play)", off: z || s.energy < 10, alert: need === "happy" },
-    z ? { id: "wake", label: "おこす", icon: "wake", k: "var(--c-sleep)" }
-      : { id: "sleep", label: "ねる", icon: "sleep", k: "var(--c-sleep)", alert: need === "energy" },
-    { id: "scold", label: "しかる", icon: "scold", k: "var(--bad)", off: z || !r.call, alert: r.call && (r.call.type === "mischief" || r.call.type === "refuse") },
+    r.phase === "baby" ? { id: "food", label: "우유", icon: "milk", k: "var(--c-food)", off: z, alert: need === "hunger" } :
+    { id: "food", label: "밥", icon: "food", k: "var(--c-food)", off: z, alert: need === "hunger" },
+    { id: "bath", label: "목욕", icon: "bath", k: "var(--c-bath)", off: z, alert: need === "clean" },
+    { id: "play", label: "놀기", icon: "play", k: "var(--c-play)", off: z || s.energy < 10, alert: need === "happy" },
+    z ? { id: "wake", label: "깨우기", icon: "wake", k: "var(--c-sleep)" }
+      : { id: "sleep", label: "재우기", icon: "sleep", k: "var(--c-sleep)", alert: need === "energy" },
+    { id: "scold", label: "혼내기", icon: "scold", k: "var(--bad)", off: z || !r.call, alert: r.call && (r.call.type === "mischief" || r.call.type === "refuse") },
   ];
 }
 
@@ -582,8 +593,8 @@ function flash() {
 let toastEl = null, toastTimer = 0;
 function toast(text, kind) {
   if (!kind) {
-    if (/ミス|ダウン|苦手|止められなかった|ころが|取れなかった|困ってた|理由もなく|使えない/.test(text)) kind = "bad";
-    else if (/アップ|成功|見つけた|仲良く|NEW|落ち着いた|勝！|わいわい/.test(text)) kind = "good";
+    if (/실수|다운|싫어하|못 말렸|굴러|못 가져|곤란|이유 없이|쓸 수 없/.test(text)) kind = "bad";
+    else if (/업|성공|발견|친해|NEW|진정|승!|왁자지껄/.test(text)) kind = "good";
     else kind = "info";
   }
   if (toastEl) toastEl.remove();
@@ -705,8 +716,8 @@ function closeSheet(s) { s.classList.remove("open"); s.setAttribute("aria-hidden
 
 function foodRow(c, z) {
   const f = z.foods || {};
-  const name = (id) => (f[id] ? foodById(id).name : "？？？");
-  return `<div class="foods">好物：${(c.likes || []).map(name).join("・") || "なし"}　苦手：${(c.dislikes || []).map(name).join("・") || "なし"}</div>`;
+  const name = (id) => (f[id] ? foodById(id).name : "???");
+  return `<div class="foods">최애: ${(c.likes || []).map(name).join("·") || "없음"}　싫어함: ${(c.dislikes || []).map(name).join("·") || "없음"}</div>`;
 }
 function renderZukan() {
   const r = state.current;
@@ -724,51 +735,51 @@ function renderZukan() {
       if (n) got++;
       return n
         ? `<li class="got"><span><b>${e.title}</b> ×${n}</span></li>`
-        : `<li><span class="h">${z.seen ? e.hint : "？？？"}</span></li>`;
+        : `<li><span class="h">${z.seen ? e.hint : "???"}</span></li>`;
     }).join("");
     card.innerHTML = `
       <div class="pic"><img src="${c.sprite}" alt=""${c.smooth ? ' style="image-rendering:auto"' : ""}></div>
       <span class="no">No.${String(c.no).padStart(3, "0")}</span>
-      <span class="nm">${z.seen ? c.name : "？？？"}</span>
-      ${z.seen ? "" : `<span class="hint">ヒント：${c.hint}</span>`}
+      <span class="nm">${z.seen ? c.name : "???"}</span>
+      ${z.seen ? "" : `<span class="hint">힌트: ${c.hint}</span>`}
       <ul class="endings">${rows}</ul>
       ${z.seen ? foodRow(c, z) : ""}
-      ${graduates().includes(c) ? `<div class="foods">なつき度 ${"★".repeat(affStars(c.id))}${"☆".repeat(3 - affStars(c.id))}</div>` : ""}
-      ${z.bye ? `<div class="res"><span class="tag soft">おわかれ ×${z.bye}</span></div>` : ""}`;
+      ${graduates().includes(c) ? `<div class="foods">친밀도 ${"★".repeat(affStars(c.id))}${"☆".repeat(3 - affStars(c.id))}</div>` : ""}
+      ${z.bye ? `<div class="res"><span class="tag soft">이별 ×${z.bye}</span></div>` : ""}`;
     if (graduates().includes(c) && graduates().length > CONFIG.homeMax) {
       const on = homeResidents().includes(c);
       const t = document.createElement("button");
       t.className = "go sub" + (on ? " on" : "");
-      t.textContent = on ? "おうちに表示中" : "おうちに表示しない";
+      t.textContent = on ? "집에 표시 중" : "집에 표시 안 함";
       t.addEventListener("click", () => toggleHomeShow(c.id));
       card.appendChild(t);
     }
     if (graduates().includes(c)) {
       const v = document.createElement("button");
       v.className = "go sub";
-      v.textContent = "おうちを見る";
+      v.textContent = "집 보러 가기";
       v.addEventListener("click", () => { closeSheet(el.sheet); enterHome(); });
       card.appendChild(v);
     }
     el.grid.appendChild(card);
   }
-  el.zcount.textContent = `結末 ${got} / ${total}`;
+  el.zcount.textContent = `결말 ${got} / ${total}`;
   const keys = Object.keys(state.bonds).filter((k) => k.split("|").every((id) => charById(id)));
   if (keys.length) {
     const box = document.createElement("div");
     box.className = "pairs";
-    box.innerHTML = "<h3>ふたりの関係</h3>" + keys.map((k) => {
+    box.innerHTML = "<h3>두 사람의 관계</h3>" + keys.map((k) => {
       const [a, b] = k.split("|").map(charById);
       const idx = pairRankIndex(k);
-      const name = idx >= 0 ? pairData(k).ranks[idx].name : "しらない";
+      const name = idx >= 0 ? pairData(k).ranks[idx].name : "모르는 사이";
       const ch = state.cheer[k];
-      const ctrl = ch ? `<div class="cheer" data-k="${k}">${["cheer", "watch", "no"].map((v) => `<button data-v="${v}" class="${ch === v ? "on" : ""}">${{ cheer: "応援する", watch: "見守る", no: "応援できない" }[v]}</button>`).join("")}</div>` : "";
-      return `<div class="pair"><div class="pair-top"><span>${a.short} × ${b.short}</span><span class="tag ${state.together[k] ? "gold" : "soft"}">${state.together[k] ? "同居中" : name}</span></div>${ctrl}</div>`;
+      const ctrl = ch ? `<div class="cheer" data-k="${k}">${["cheer", "watch", "no"].map((v) => `<button data-v="${v}" class="${ch === v ? "on" : ""}">${{ cheer: "응원하기", watch: "지켜보기", no: "응원 못 해" }[v]}</button>`).join("")}</div>` : "";
+      return `<div class="pair"><div class="pair-top"><span>${a.short} × ${b.short}</span><span class="tag ${state.together[k] ? "gold" : "soft"}">${state.together[k] ? "동거 중" : name}</span></div>${ctrl}</div>`;
     }).join("");
     box.querySelectorAll(".cheer button").forEach((btn) => btn.addEventListener("click", () => {
       const k = btn.parentElement.dataset.k;
       setCheer(k, btn.dataset.v);
-      toast({ cheer: "応援することにした！", watch: "見守ることにした", no: "友達として見守ることにした" }[btn.dataset.v]);
+      toast({ cheer: "응원하기로 했다!", watch: "지켜보기로 했다", no: "친구로서 지켜보기로 했다" }[btn.dataset.v]);
       renderZukan();
     }));
     el.grid.prepend(box);
@@ -785,7 +796,7 @@ async function startRun() {
   setX(50, 0);
   render();
   anim("jump", 500);
-  await dialog(["たまごを受け取った！", "温度を「ちょうどいい」に保つと、だんだんかえってくるよ。", "あつすぎたら「あおぐ」、ぐらぐらしたら「なでる」。", "じょうずに温めるほど、元気な子が生まれるみたい。"]);
+  await dialog(["알을 받았다!", "온도를 「딱 좋아」로 유지하면 점점 부화해.", "너무 뜨거우면 「부채질」, 흔들리면 「쓰다듬기」.", "잘 품을수록 건강한 아이가 태어나나 봐."]);
 }
 
 async function hatch() {
@@ -808,8 +819,8 @@ async function hatch() {
   anim("jump", 500);
   hearts(rank === "great" ? 6 : 3);
   setBusy(false);
-  const qMsg = { great: "じょうずに温められた！ とっても元気なあかちゃんだ！", ok: "ふつうに元気なあかちゃんだ。", poor: "ちょっと弱々しいかも……。しっかりお世話しよう。" }[rank];
-  await dialog(["たまごがかえった！", "あかちゃんが生まれた！", qMsg, "メーターの色と同じ色のボタンで回復できるよ。", "きげんは「あそぶ」と、タップしてなでると上がる。げんきは「ねる」で回復。", "メーターをタップすると、いつでも上げ方を見られるよ。"]);
+  const qMsg = { great: "잘 품었다! 아주 건강한 아기다!", ok: "평범하게 건강한 아기다.", poor: "조금 약해 보여……. 잘 돌봐 주자." }[rank];
+  await dialog(["알이 부화했다!", "아기가 태어났다!", qMsg, "게이지와 같은 색 버튼으로 회복할 수 있어.", "기분은 「놀기」나 탭해서 쓰다듬으면 올라. 기운은 「재우기」로 회복.", "게이지를 탭하면 언제든 올리는 법을 볼 수 있어."]);
   line("tap");
 }
 
@@ -822,7 +833,7 @@ async function evolved() {
   save(true);
   revealing = true;
   render();
-  await dialog(["……あかちゃんのようすが？"]);
+  await dialog(["……아기의 상태가?"]);
   setBusy(true);
   for (let i = 0; i < 3; i++) { anim("wobble", 600); await sleepMs(650); }
   flash(); sfx("fanfare");
@@ -832,7 +843,7 @@ async function evolved() {
   render();
   anim("jump", 500);
   hearts(4);
-  await dialog([`${c.name}になった！${first ? "（はじめて見た！）" : ""}`]);
+  await dialog([`${J(c.name, "이/가")} 되었다!${first ? " (처음 봤다!)" : ""}`]);
 }
 
 async function grewUp() {
@@ -841,7 +852,7 @@ async function grewUp() {
   render();
   anim("jump", 500);
   hearts(3);
-  await dialog([`${c.short}が大きくなった！`]);
+  await dialog([`${J(c.short, "이/가")} 많이 컸다!`]);
 }
 
 async function endRun() {
@@ -857,24 +868,24 @@ async function endRun() {
     const first = !z.endings[e.id];
     r.sleeping = false; r.call = null; render();
     anim("jump", 500); hearts(5); sfx("fanfare");
-    await dialog([`${c.short}はりっぱに育った。`, `結末『${e.title}』${first ? "　NEW!" : ""}`, `「${e.line}」`]);
+    await dialog([`${J(c.short, "은/는")} 훌륭하게 자랐다.`, `결말 『${e.title}』${first ? "　NEW!" : ""}`, `"${e.line}"`]);
     el.actor.classList.add("walking");
     el.actor.style.setProperty("--face", "1");
     setX(115, 2.5);
     await sleepMs(2600);
     z.endings[e.id] = (z.endings[e.id] || 0) + 1;
-    await dialog([`${c.short}はおうちでくらしはじめた。`, `ずかんに記録した！（お世話ミス ${r.misses}回）`]);
+    await dialog([`${J(c.short, "은/는")} 집에서 살기 시작했다.`, `도감에 기록했다! (돌봄 실수 ${r.misses}회)`]);
   } else {
-    const name = r.charId ? who(r).short : "あかちゃん";
+    const name = r.charId ? who(r).short : "아기";
     el.actor.classList.add("ghost"); sfx("bad");
-    await dialog(["お世話ミスが重なって……", `${name}はどこかへ行ってしまった。`]);
+    await dialog(["돌봄 실수가 쌓여서……", `${J(name, "은/는")} 어딘가로 떠나 버렸다.`]);
     el.actor.classList.add("gone");
     await sleepMs(1200);
     if (r.charId) {
       const z = (state.zukan[r.charId] ||= { endings: {} });
       z.seen = true; z.bye = (z.bye || 0) + 1;
     }
-    await dialog(["次はもっとお世話してあげよう。"]);
+    await dialog(["다음엔 더 잘 돌봐 주자."]);
   }
   el.actor.classList.remove("ghost", "gone", "walking");
   state.current = null;
@@ -886,19 +897,19 @@ async function endRun() {
 let pendingCallLine = false;
 function handleEvents(evs) {
   if (!evs.length) return;
-  if (evs.includes("miss")) { toast("お世話ミス…！"); sfx("bad"); }
+  if (evs.includes("miss")) { toast("돌봄 실수…!"); sfx("bad"); }
   if (evs.includes("fellAsleep") || evs.includes("wokeUp") || evs.includes("nightSleep") || evs.includes("morning")) { stopWalkHere(); render(); }
-  if (evs.includes("morning")) setTimeout(() => say("おはよう"), 300);
+  if (evs.includes("morning")) setTimeout(() => say("좋은 아침"), 300);
   if (evs.includes("wokeUp")) line("happy");
   if (evs.includes("call") || evs.includes("mischief")) {
-    if (state.view === "home" && state.current) toast(`${state.current.charId ? who(state.current).short : "あかちゃん"}が呼んでる！`);
+    if (state.view === "home" && state.current) toast(`${J(state.current.charId ? who(state.current).short : "아기", "이/가")} 부르고 있어!`);
   }
   if (evs.includes("call")) {
     sfx("call");
     pendingCallLine = true;
     if (!state.tips.call) {
       state.tips.call = 1; save();
-      dialog(["「！」は呼んでるサイン。", "上の画面に、なにがほしいか出るよ。", "メーターが赤くて減ってたら本当。その世話をしてあげて。", "メーターが緑で足りてるのに言ってたら、わがまま。「しかる」でしつけよう。", "「しかる」は呼ばれてるときだけ使えるよ。"]);
+      dialog(["「!」는 부르고 있다는 신호.", "위 화면에 뭘 원하는지 나와.", "게이지가 빨갛게 줄어 있으면 진짜. 그 돌봄을 해 줘.", "게이지가 초록색이라 충분한데 말하면 투정. 「혼내기」로 훈육하자.", "「혼내기」는 부를 때만 쓸 수 있어."]);
     }
   }
   if (evs.includes("mischief")) {
@@ -907,10 +918,10 @@ function handleEvents(evs) {
     anim("wobble", 600);
     if (!state.tips.mischief) {
       state.tips.mischief = 1; save();
-      dialog(["いたずらしてる！", "いたずらは「しかる」で止めよう。", "ほうっておいたり、ほかの世話でごまかすと、しつけが下がるよ。"]);
+      dialog(["장난치고 있어!", "장난은 「혼내기」로 말리자.", "내버려 두거나 다른 돌봄으로 넘어가면 훈육이 떨어져."]);
     }
   }
-  if (evs.includes("mischiefGone")) { tidyUp(); toast("いたずらを止められなかった…（しつけダウン）"); }
+  if (evs.includes("mischiefGone")) { tidyUp(); toast("장난을 못 말렸다… (훈육 다운)"); }
   if (evs.includes("evolve")) { revealing = true; evolved(); }
   if (evs.includes("grow")) grewUp();
   if (evs.includes("end")) endRun();
@@ -940,7 +951,7 @@ function answerCall(actionId) {
   r.call = null; r.callCool = 60;
   spoil(r);
   if (wasMischief) tidyUp();
-  toast("甘やかしちゃった…（しつけダウン）");
+  toast("오냐오냐해 버렸다… (훈육 다운)");
   return "spoiled";
 }
 
@@ -955,7 +966,7 @@ function maybeRefuse(id) {
   render(); save();
   if (!state.tips.refuse) {
     state.tips.refuse = 1;
-    dialog(["いやがってる……。", "しつけが低いと、言うことを聞かないみたい。", "「しかる」でしつけてから、もう一回やってみよう。"]);
+    dialog(["싫어하고 있어…….", "훈육이 낮으면 말을 안 듣나 봐.", "「혼내기」로 훈육한 다음 다시 해 보자."]);
   }
   return true;
 }
@@ -980,7 +991,7 @@ function openTray(onPick, forChar) {
     const b = document.createElement("button");
     const k = known[f.id];
     b.className = "food" + (k ? " " + k : "");
-    b.innerHTML = `${f.icon}<span>${f.name}</span>${k === "like" ? '<em>好物</em>' : k === "dislike" ? '<em>苦手</em>' : ""}`;
+    b.innerHTML = `${f.icon}<span>${f.name}</span>${k === "like" ? '<em>최애</em>' : k === "dislike" ? '<em>싫어함</em>' : ""}`;
     b.addEventListener("click", () => {
       closeTray(); sfx("btn");
       if (typeof onPick === "function") { onPick(f); return; }
@@ -999,7 +1010,7 @@ function closeTray() {
 }
 $("#tray-close").addEventListener("click", () => { closeTray(); if (homeMode) setHomeMode(null); });
 
-const STAT_NAME = { hunger: "おなか", happy: "きげん", clean: "せいけつ", energy: "げんき" };
+const STAT_NAME = { hunger: "포만감", happy: "기분", clean: "청결", energy: "기운" };
 function showDeltas(D) {
   let i = 0;
   for (const k in D) {
@@ -1012,7 +1023,7 @@ function showDeltas(D) {
 function feed(foodId, res) {
   const r = state.current;
   const s = r.stats;
-  if (s.hunger >= 95 && res !== "spoiled") { s.happy = clamp(s.happy - 5); anim("squish", 350); say("もういらない…"); return; }
+  if (s.hunger >= 95 && res !== "spoiled") { s.happy = clamp(s.happy - 5); anim("squish", 350); say("이제 됐어…"); return; }
   const icon = foodId === "milk" ? ICON.milk : foodById(foodId).icon;
   fx(icon, "drop", 0, 0);
   setTimeout(() => {
@@ -1034,8 +1045,8 @@ function feed(foodId, res) {
       if (!z.foods[foodId]) {
         z.foods[foodId] = pref;
         const n = foodById(foodId).name;
-        if (pref === "like") toast(`好物を見つけた！「${n}」`);
-        else if (pref === "dislike") toast(`「${n}」は苦手みたい…`);
+        if (pref === "like") toast(`최애 음식 발견! 「${n}」`);
+        else if (pref === "dislike") toast(`「${n}」${P(n, "은/는")} 싫어하나 봐…`);
       }
     }
     render(); save();
@@ -1055,7 +1066,7 @@ function startMinigame() {
   mgScoreEl.className = "mg-score";
   el.room.appendChild(mgScoreEl);
   updateScore();
-  say("あっちむいて……", 0);
+  say("참참……", 0);
   render();
 }
 function updateScore() {
@@ -1071,7 +1082,7 @@ async function mgPick(dir) {
   if (!mg || mg.locked) return;
   mg.locked = true; lastActionsKey = ""; renderActions();
   const look = Math.random() < 0.5 ? "L" : "R";
-  say("ほい！", 900);
+  say("참!", 900);
   el.actor.classList.add("look" + look);
   el.look.textContent = look === "L" ? "←" : "→";
   el.look.hidden = false;
@@ -1087,7 +1098,7 @@ async function mgPick(dir) {
   mg.round++;
   if (mg.round >= CONFIG.mgRounds) { endMinigame(false); return; }
   mg.locked = false; lastActionsKey = "";
-  say("あっちむいて……", 0);
+  say("참참……", 0);
   render();
 }
 function endMinigame(silent) {
@@ -1107,8 +1118,8 @@ function endMinigame(silent) {
   if (r.phase === "baby" && win) r.baby.gentle += 1;
   else if (win) r.log.wins++;
   anim("jump", 500);
-  if (win) { hearts(3); sfx("good"); setTimeout(() => line("play"), 200); toast(`${wins}勝！きげん大アップ`); }
-  else { fx(NOTE, "", 0, -10); setTimeout(() => line("happy"), 200); toast(`${wins}勝…でも楽しかったみたい（きげんアップ）`); }
+  if (win) { hearts(3); sfx("good"); setTimeout(() => line("play"), 200); toast(`${wins}승! 기분 대폭 업`); }
+  else { fx(NOTE, "", 0, -10); setTimeout(() => line("happy"), 200); toast(`${wins}승… 그래도 즐거웠나 봐 (기분 업)`); }
   render(); save();
 }
 
@@ -1139,15 +1150,15 @@ function doAction(id) {
     anim("squish", 350);
     fx(HEAT, "", -20, 10); fx(HEAT, "", 22, 0, 120); sfx("warm");
   } else if (id === "incubate") {
-    dialog(["あたため器にまかせる？", `${CONFIG.incubateMin}分でかえるよ。画面を閉じていても進む。`, "そのかわり、生まれる子は「ふつう」になる。"], [
-      { label: "まかせる", value: true }, { label: "自分であたためる", value: false, sub: true },
+    dialog(["부화기에 맡길까?", `${CONFIG.incubateMin}분이면 부화해. 화면을 닫아도 진행돼.`, "대신 태어나는 아이는 「보통」이 돼."], [
+      { label: "맡기기", value: true }, { label: "직접 품기", value: false, sub: true },
     ]).then((v) => {
       if (!v || !state.current || state.current.phase !== "egg") return;
       state.current.incubate = true;
       state.current.wobbleUntil = 0;
       el.actor.classList.remove("shaking");
       save(true); render();
-      toast("あたため器にセットした");
+      toast("부화기에 넣었다");
     });
     return;
   } else if (id === "fan") {
@@ -1161,7 +1172,7 @@ function doAction(id) {
       r.wobbleUntil = 0; r.eggQ = clamp(r.eggQ + 6);
       el.actor.classList.remove("shaking");
       el.bubble.hidden = true;
-      toast("落ち着いた！");
+      toast("진정했다!");
     }
   } else if (id === "play") {
     if (maybeRefuse(id)) return;
@@ -1179,12 +1190,12 @@ function doAction(id) {
       if (r.phase === "baby") r.baby.strict += 2; else r.log.discipline += 1;
       if (c.type === "mischief") tidyUp();
       line("scolded");
-      toast("しつけ成功！（しつけアップ）"); sfx("good");
+      toast("훈육 성공! (훈육 업)"); sfx("good");
     } else {
       s.happy = clamp(s.happy - 10);
       if (r.phase === "baby") r.baby.strict += 1;
       line("hurt");
-      toast(c ? "本当に困ってたのに……（きげんダウン）" : "理由もなくしかった……（きげんダウン）"); sfx("bad");
+      toast(c ? "진짜로 곤란했는데…… (기분 다운)" : "이유 없이 혼냈다…… (기분 다운)"); sfx("bad");
     }
   } else {
     if (id !== "wake" && maybeRefuse(id)) return;
@@ -1206,10 +1217,10 @@ function doAction(id) {
         r.night = false;
         state.awakeUntil = Date.now() + 5 * 60 * 1000;
         s.happy = clamp(s.happy - 10);
-        setTimeout(() => say("……まだ夜だよ"), 100);
+        setTimeout(() => say("……아직 밤이야"), 100);
       }
       r.sleeping = false;
-      if (s.energy < 30) { s.happy = clamp(s.happy - 10); setTimeout(() => say("……まだねむい"), 100); }
+      if (s.energy < 30) { s.happy = clamp(s.happy - 10); setTimeout(() => say("……아직 졸려"), 100); }
     }
   }
   render();
@@ -1304,16 +1315,16 @@ function pairRankIndex(key) {
   if (state.cheer[key] !== "cheer") idx = Math.min(idx, friendTop(key));
   return idx;
 }
-const CHEER_LABEL = { cheer: "応援中", watch: "見守り中", no: "友達" };
+const CHEER_LABEL = { cheer: "응원 중", watch: "지켜보는 중", no: "친구" };
 async function askCheer(key) {
   const [a, b] = key.split("|").map((id) => charById(id).short);
-  const v = await dialog([`${a}と${b}、ふたりの距離が近づいてる……`, "どうする？"], [
-    { label: "応援する", value: "cheer" },
-    { label: "見守る", value: "watch", sub: true },
-    { label: "応援できない", value: "no", sub: true },
+  const v = await dialog([`${J(a, "과/와")} ${b}, 두 사람의 거리가 가까워지고 있어……`, "어떻게 할까?"], [
+    { label: "응원하기", value: "cheer" },
+    { label: "지켜보기", value: "watch", sub: true },
+    { label: "응원 못 해", value: "no", sub: true },
   ]);
   setCheer(key, v);
-  const msg = { cheer: "ふたりを応援することにした！", watch: "しばらく見守ることにした。（ずかんからいつでも変えられるよ）", no: "ふたりはこれからも、いい友達。（ずかんからいつでも変えられるよ）" }[v];
+  const msg = { cheer: "두 사람을 응원하기로 했다!", watch: "당분간 지켜보기로 했다. (도감에서 언제든 바꿀 수 있어)", no: "두 사람은 앞으로도 좋은 친구. (도감에서 언제든 바꿀 수 있어)" }[v];
   await dialog([msg]);
 }
 function setCheer(key, v) {
@@ -1342,7 +1353,7 @@ async function checkPairEvents(key) {
     save(true);
     const rk = pd.ranks[idx];
     sfx("fanfare");
-    await dialog([...rk.scene.map((t) => fill(t, key)), `ふたりの関係が「${rk.name}」になった！`]);
+    await dialog([...rk.scene.map((t) => fill(t, key)), `두 사람의 관계가 「${rk.name}」${P(rk.name, "으로/로")} 바뀌었다!`]);
     if (idx >= friendTop(key) && !state.cheer[key]) await askCheer(key);
     return;
   }
@@ -1350,7 +1361,7 @@ async function checkPairEvents(key) {
   const top = pd.ranks.length - 1;
   if (state.cheer[key] === "cheer" && idx === top && !state.together[key] && (state.bonds[key] || 0) >= (state.proposeAt[key] || 0)) {
     const lines = pd.proposal.lines.map((t) => fill(t, key));
-    const yes = await dialog(lines, [{ label: "いっしょに暮らす", value: true }, { label: "まだはやい", value: false, sub: true }]);
+    const yes = await dialog(lines, [{ label: "같이 살기", value: true }, { label: "아직 일러", value: false, sub: true }]);
     if (yes) { state.together[key] = true; await dialog([fill(pd.proposal.yes, key)]); }
     else { state.proposeAt[key] = (state.bonds[key] || 0) + 5; await dialog([fill(pd.proposal.no, key)]); }
     save(true);
@@ -1401,10 +1412,10 @@ function homeResidents() {
 function toggleHomeShow(id) {
   const cur = homeResidents().map((c) => c.id);
   if (cur.includes(id)) {
-    if (cur.length <= 1) { toast("だれもいなくなっちゃうよ"); return; }
+    if (cur.length <= 1) { toast("아무도 없어져 버려"); return; }
     state.homeShow = cur.filter((x) => x !== id);
   } else {
-    if (cur.length >= CONFIG.homeMax) { toast(`おうちに出せるのは${CONFIG.homeMax}人まで。先にだれかを外してね`); return; }
+    if (cur.length >= CONFIG.homeMax) { toast(`집에 둘 수 있는 건 ${CONFIG.homeMax}명까지. 먼저 누군가를 빼 줘`); return; }
     state.homeShow = cur.concat(id);
   }
   save(true);
@@ -1480,7 +1491,7 @@ function groupGather(list, done) {
     miniLater(list[0], () => {
       for (let a = 0; a < n; a++) for (let b = a + 1; b < n; b++) addBond(pairKey(list[a].c.id, list[b].c.id), 1);
       list.forEach((m) => (m.busy = false));
-      toast("みんなでわいわいした！（みんな少し仲良くなった）");
+      toast("다 같이 왁자지껄! (모두 조금 친해졌다)");
       sfx("good");
       done && done();
     }, n * 700 + 1600);
@@ -1496,7 +1507,7 @@ function setHomeMode(mode) {
   if (mode && mode.first) mode.first.el.classList.add("picked");
   const hint = $("#home-hint");
   hint.hidden = !mode;
-  if (mode) hint.textContent = mode.type === "talk" ? (mode.first ? `${mode.first.c.short}と話す子をタップ` : "話させたい子をタップ（2人）") : `「${mode.food.name}」をあげる子をタップ`;
+  if (mode) hint.textContent = mode.type === "talk" ? (mode.first ? `${J(mode.first.c.short, "과/와")} 이야기할 아이를 탭` : "이야기시킬 아이를 탭 (2명)") : `「${mode.food.name}」${P(mode.food.name, "을/를")} 줄 아이를 탭`;
   lastActionsKey = ""; renderActions();
 }
 const AFF_STEPS = [20, 50, 100];
@@ -1508,7 +1519,7 @@ function addAffection(c, n) {
   save();
   if (after > before) {
     sfx("fanfare");
-    dialog([`${c.short}が、すっかりなついてきた！`, `なつき度 ${"★".repeat(after)}${"☆".repeat(3 - after)}`, "遊びに来たときのお手伝いが、ちょっとパワーアップするよ。"]);
+    dialog([`${J(c.short, "이/가")} 완전히 마음을 열었다!`, `친밀도 ${"★".repeat(after)}${"☆".repeat(3 - after)}`, "놀러 왔을 때 돕는 힘이 조금 세져."]);
   }
 }
 const petCool = {};
@@ -1526,8 +1537,8 @@ function homeTap(m) {
     z.foods ||= {};
     if (!z.foods[food.id]) {
       z.foods[food.id] = pref;
-      if (pref === "like") toast(`好物を見つけた！「${food.name}」`);
-      else if (pref === "dislike") toast(`「${food.name}」は苦手みたい…`);
+      if (pref === "like") toast(`최애 음식 발견! 「${food.name}」`);
+      else if (pref === "dislike") toast(`「${food.name}」${P(food.name, "은/는")} 싫어하나 봐…`);
     }
     save();
     return;
@@ -1538,8 +1549,8 @@ function homeTap(m) {
     const A = homeMode.first, B = m;
     const key = pairKey(A.c.id, B.c.id);
     setHomeMode(null);
-    if (Date.now() - (lastTalk[key] || 0) < 60000) { toast("さっき話したばかりみたい。ちょっと待ってね"); return; }
-    if (A.busy || B.busy) { toast("いまはいそがしいみたい"); return; }
+    if (Date.now() - (lastTalk[key] || 0) < 60000) { toast("방금 이야기했나 봐. 조금 기다려 줘"); return; }
+    if (A.busy || B.busy) { toast("지금은 바쁜가 봐"); return; }
     talkPair(A, B);
     return;
   }
@@ -1576,7 +1587,7 @@ function startVisit(c) {
   const m = makeMini(c, fromLeft ? -12 : 112, "44%");
   const k = state.fast ? 0.4 : 1;
   visitor = { m, until: Date.now() + CONFIG.visitStaySec * 1000 * k, helpAt: Date.now() + 4000 * k };
-  toast(`${c.short}が遊びに来た！`); sfx("visit");
+  toast(`${J(c.short, "이/가")} 놀러 왔다!`); sfx("visit");
   miniMove(m, fromLeft ? 20 : 80, () => { miniSay(m, pick(c.lines.visit)); miniJump(m); }, 14);
 }
 function visitTick(now) {
@@ -1609,7 +1620,7 @@ function endVisit(silent) {
   if (r && r.charId && r.charId !== m.c.id) {
     const key = pairKey(r.charId, m.c.id);
     addBond(key, 2);
-    toast(`${m.c.short}と${who(r).short}が少し仲良くなった`);
+    toast(`${J(m.c.short, "과/와")} ${J(who(r).short, "이/가")} 조금 친해졌다`);
   }
   setTimeout(() => miniMove(m, m.x < 50 ? -15 : 115, () => miniRemove(m), 14), 1200);
 }
@@ -1629,7 +1640,7 @@ async function fetchWeather() {
   if (!state.settings.weather) { state.weather = null; applyWeather(); return; }
   weatherTimer = setTimeout(fetchWeather, 30 * 60 * 1000);
   const s = state.settings;
-  const pos = s.city === "geo" && s.geo ? s.geo : CITIES.find((c) => c.id === s.city) || CITIES[2];
+  const pos = s.city === "geo" && s.geo ? s.geo : CITIES.find((c) => c.id === s.city) || CITIES[0];
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${pos.lat}&longitude=${pos.lon}&current=weather_code&timezone=auto`;
     const res = await fetch(url);
@@ -1638,22 +1649,22 @@ async function fetchWeather() {
     state.weather = { kind: weatherKind(j.current.weather_code), at: Date.now() };
     save();
   } catch (e) {
-    if (!weatherWarned) { weatherWarned = true; toast("天気を取れなかった（この画面では使えないかも）"); }
+    if (!weatherWarned) { weatherWarned = true; toast("날씨를 못 가져왔어 (이 화면에서는 안 될지도)"); }
   }
   applyWeather();
 }
-const WEATHER_NAME = { clear: "はれ", cloudy: "くもり", fog: "きり", rain: "あめ", snow: "ゆき", thunder: "かみなり" };
+const WEATHER_NAME = { clear: "맑음", cloudy: "흐림", fog: "안개", rain: "비", snow: "눈", thunder: "천둥" };
 function applyWeather() {
   const k = state.settings.weather && state.weather ? state.weather.kind : "clear";
   el.room.dataset.weather = k;
   const lab = $("#weather-now");
-  if (lab) lab.textContent = state.settings.weather && state.weather ? `いま：${WEATHER_NAME[k]}` : "";
+  if (lab) lab.textContent = state.settings.weather && state.weather ? `지금: ${WEATHER_NAME[k]}` : "";
 }
 function useGeo() {
-  if (!navigator.geolocation) { toast("現在地が使えないみたい"); return; }
+  if (!navigator.geolocation) { toast("현재 위치를 쓸 수 없나 봐"); return; }
   navigator.geolocation.getCurrentPosition(
     (p) => { state.settings.geo = { lat: +p.coords.latitude.toFixed(2), lon: +p.coords.longitude.toFixed(2) }; save(true); fetchWeather(); },
-    () => { toast("現在地が取れなかった。地域を選んでね"); },
+    () => { toast("현재 위치를 못 가져왔어. 지역을 골라 줘"); },
     { timeout: 8000 }
   );
 }
@@ -1697,7 +1708,7 @@ function fillSettings() {
   const city = $("#opt-city");
   if (!city.options.length) {
     for (const c of CITIES) city.add(new Option(c.name, c.id));
-    city.add(new Option("現在地", "geo"));
+    city.add(new Option("현재 위치", "geo"));
     const hours = (sel) => { for (let h = 0; h < 24; h++) sel.add(new Option(`${h}:00`, h)); };
     hours($("#opt-bed")); hours($("#opt-wake"));
   }
@@ -1724,10 +1735,10 @@ $("#opt-city").addEventListener("change", (e) => {
   state.settings.city = e.target.value; save(true);
   if (e.target.value === "geo") useGeo(); else fetchWeather();
 });
-$("#opt-bed").addEventListener("change", (e) => { state.settings.bed = +e.target.value; save(true); toast(`${e.target.value}:00 におやすみ`); });
-$("#opt-wake").addEventListener("change", (e) => { state.settings.wake = +e.target.value; save(true); toast(`${e.target.value}:00 におきる`); });
+$("#opt-bed").addEventListener("change", (e) => { state.settings.bed = +e.target.value; save(true); toast(`${e.target.value}:00에 자기`); });
+$("#opt-wake").addEventListener("change", (e) => { state.settings.wake = +e.target.value; save(true); toast(`${e.target.value}:00에 일어나기`); });
 $("#settings-close").addEventListener("click", () => closeSheet(el.settings));
-$("#opt-fast").addEventListener("change", (e) => { state.fast = e.target.checked; save(true); toast(state.fast ? "はやおくり ON" : "はやおくり OFF"); });
+$("#opt-fast").addEventListener("change", (e) => { state.fast = e.target.checked; save(true); toast(state.fast ? "빨리감기 ON" : "빨리감기 OFF"); });
 $("#opt-reset").addEventListener("click", () => ($("#reset-confirm").hidden = false));
 $("#reset-no").addEventListener("click", () => ($("#reset-confirm").hidden = true));
 $("#reset-yes").addEventListener("click", () => {
@@ -1735,7 +1746,7 @@ $("#reset-yes").addEventListener("click", () => {
   state = freshState(); state.introDone = true;
   save(true); clearNeighbors(); setX(50, 0);
   $("#reset-confirm").hidden = true; closeSheet(el.settings);
-  render(); toast("データを消したよ");
+  render(); toast("데이터를 지웠어");
 });
 $("#btn-zukan").addEventListener("click", () => { if (!el.dialog.hidden) return; renderZukan(); openSheet(el.sheet); });
 $("#sheet-close").addEventListener("click", () => closeSheet(el.sheet));
@@ -1750,7 +1761,7 @@ async function begin() {
   setTimeout(() => (el.title.hidden = true), 500);
   if (!state.introDone) {
     state.introDone = true; save(true);
-    await dialog(["ようこそ！", "ここは、ちいさな子を育てるおへや。", "たまごから育てて、ずかんの結末をぜんぶ集めよう。"]);
+    await dialog(["어서 와!", "여기는 작은 아이를 키우는 방.", "알부터 키워서 도감의 결말을 전부 모아 보자."]);
   }
 }
 
@@ -1773,7 +1784,7 @@ function start(data) {
   if (state.current && state.current.phase === "egg" && state.current.incubate) eggCatchUp(capped);
   if (state.current && capped > 5) {
     evs = advance(capped, true);
-    if (away > 120) setTimeout(() => toast(`おるすばん ${Math.round(away / 60)}分`), 600);
+    if (away > 120) setTimeout(() => toast(`집 보기 ${Math.round(away / 60)}분`), 600);
   }
   updateTime();
   setInterval(updateTime, 60000);
